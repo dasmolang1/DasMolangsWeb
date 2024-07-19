@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>#Knackig on Twimmer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e6ecf0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            max-width: 900px;
+            width: 100%;
+            padding: 20px;
+        }
+        .content-container {
+            flex: 2;
+            margin-right: 20px;
+        }
+        .header {
+            background-color: #000; /* Schwarz */
+            color: #ff0000; /* Rot */
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .header img {
+            max-width: 100px;
+            display: block;
+            margin: 0 auto 10px;
+        }
+        .posts {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .post {
+            background-color: white;
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .post .content {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .post .author {
+            font-size: 14px;
+            color: #657786;
+            margin-bottom: 10px;
+        }
+        .post .hashtags {
+            color: #000; /* Schwarz */
+            font-size: 14px;
+        }
+        .post img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .updates-channel {
+            flex: 1;
+            background-color: #000; /* Schwarz */
+            color: white;
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .updates-channel h2 {
+            font-size: 18px;
+            margin-top: 0;
+            color: #ff0000; /* Rot */
+        }
+        .updates-channel .author {
+            font-size: 14px;
+            color: #ffcc00; /* Gelb */
+            margin-top: 10px;
+        }
+        .updates-channel ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .updates-channel ul li {
+            margin-bottom: 10px;
+        }
+        .new-post, .login-form, .register-form {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .new-post textarea, .new-post input, .login-form input, .register-form input {
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .new-post button, .login-form button, .register-form button {
+            background-color: #000; /* Schwarz */
+            color: #ffcc00; /* Gelb */
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .new-post button:hover, .login-form button:hover, .register-form button:hover {
+            background-color: #ff0000; /* Rot */
+        }
+    </style>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtkGBchFwcd63zVjXohu-sE-LGf4GZsv0",
+            authDomain: "twimmer-7ce82.firebaseapp.com",
+            projectId: "twimmer-7ce82",
+            storageBucket: "twimmer-7ce82.appspot.com",
+            messagingSenderId: "143495603634",
+            appId: "1:143495603634:web:728cc603cbd56d725170ab",
+            measurementId: "G-0SWG1K3QV8"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app, "https://twimmer-7ce82-default-rtdb.europe-west1.firebasedatabase.app");
+
+        function renderPosts(posts) {
+            const postsContainer = document.getElementById('posts');
+            postsContainer.innerHTML = '';
+
+            posts.forEach(post => {
+                const postElement = document.createElement('li');
+                postElement.className = 'post';
+
+                const contentElement = document.createElement('div');
+                contentElement.className = 'content';
+                contentElement.textContent = post.content;
+                postElement.appendChild(contentElement);
+
+                const authorElement = document.createElement('div');
+                authorElement.className = 'author';
+                authorElement.textContent = `Gesendet von ${post.author}`;
+                postElement.appendChild(authorElement);
+
+                if (post.hashtags.length > 0) {
+                    const hashtagsElement = document.createElement('div');
+                    hashtagsElement.className = 'hashtags';
+                    hashtagsElement.textContent = post.hashtags.map(tag => `#${tag}`).join(' ');
+                    postElement.appendChild(hashtagsElement);
+                }
+
+                if (post.image) {
+                    const imageElement = document.createElement('img');
+                    imageElement.src = post.image;
+                    postElement.appendChild(imageElement);
+                }
+
+                postsContainer.appendChild(postElement);
+            });
+        }
+
+        function loadPosts() {
+            const postsRef = ref(database, 'posts');
+            onValue(postsRef, (snapshot) => {
+                const posts = snapshot.val();
+                const postsArray = posts ? Object.values(posts) : [];
+                renderPosts(postsArray);
+            });
+        }
+
+        function addPost() {
+            const user = auth.currentUser;
+            const content = document.getElementById('new-content').value;
+            const image = document.getElementById('new-image').value;
+            let hashtags = document.getElementById('new-hashtags').value.split(',').map(tag => tag.trim());
+
+            // Validate minimum length
+            if (content.length < 3) {
+                alert('Inhalt muss mindestens 3 Zeichen lang sein.');
+                return;
+            }
+
+            // Remove # from hashtags
+            hashtags = hashtags.map(tag => tag.replace('#', ''));
+
+            const newPostRef = push(ref(database, 'posts'));
+            set(newPostRef, {
+                content: content,
+                author: user.email.split('@')[0], // Use part of email as username
+                hashtags: hashtags,
+                image: image
+            });
+
+            document.getElementById('new-content').value = '';
+            document.getElementById('new-image').value = '';
+            document.getElementById('new-hashtags').value = '';
+        }
+
+        function register() {
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    alert('Registrierung erfolgreich!');
+                    document.getElementById('register-email').value = '';
+                    document.getElementById('register-password').value = '';
+                })
+                .catch((error) => {
+                    alert('Fehler bei der Registrierung: ' + error.message);
+                });
+        }
+
+        function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    alert('Erfolgreich eingeloggt!');
+                    document.getElementById('login-email').value = '';
+                    document.getElementById('login-password').value = '';
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('new-post').style.display = 'block';
+                })
+                .catch((error) => {
+                    alert('Fehler beim Einloggen: ' + error.message);
+                });
+        }
+
+        function logout() {
+            signOut(auth).then(() => {
+                alert('Erfolgreich ausgeloggt!');
+                document.getElementById('new-post').style.display = 'none';
+                document.getElementById('auth-section').style.display = 'block';
+            }).catch((error) => {
+                alert('Fehler beim Ausloggen: ' + error.message);
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('new-post').style.display = 'block';
+            } else {
+                document.getElementById('auth-section').style.display = 'block';
+                document.getElementById('new-post').style.display = 'none';
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', loadPosts);
+        window.register = register;
+        window.login = login;
+        window.logout = logout;
+        window.addPost = addPost;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="content-container">
+            <div class="header">
+                <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg" alt="Deutschland Flagge">
+                <h1>Twimmer - Der Twitter Fake</h1>
+            </div>
+            <div id="auth-section">
+                <div class="register-form">
+                    <h2>Registrieren</h2>
+                    <input type="email" id="register-email" placeholder="Email" />
+                    <input type="password" id="register-password" placeholder="Passwort" />
+                    <button onclick="register()">Registrieren</button>
+                </div>
+                <div class="login-form">
+                    <h2>Einloggen</h2>
+                    <input type="email" id="login-email" placeholder="Email" />
+                    <input type="password" id="login-password" placeholder="Passwort" />
+                    <button onclick="login()">Einloggen</button>
+                </div>
+            </div>
+            <div id="new-post" class="new-post" style="display:none;">
+                <textarea id="new-content" placeholder="Schreibe einen neuen Twimm..."></textarea>
+                <input type="text" id="new-hashtags" placeholder="Hashtags (kommagetrennt)"/>
+                <input type="text" id="new-image" placeholder="Bildlink (optional)" />
+                <button onclick="addPost()">Posten</button>
+                <button onclick="logout()">Ausloggen</button>
+            </div>
+            <ul id="posts" class="posts">
+                <!-- Posts will be added here via JavaScript -->
+            </ul>
+        </div>
+        <div class="updates-channel">
+            <h2>Updates</h2>
+            <p class="author">Veröffentlicht von Twimmer Team</p>
+            <ul id="updates">
+                <li>Twimmer V2 kommt bald!</li>
+                <br>
+                <h2> Neues Update!  - EM Update - </h2>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
